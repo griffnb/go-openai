@@ -90,6 +90,8 @@ type RunRequest struct {
 	Tools                  []Tool         `json:"tools,omitempty"`
 	Metadata               map[string]any `json:"metadata,omitempty"`
 
+	ToolResources map[string]any `json:"tool_resources,omitempty"`
+
 	// Sampling temperature between 0 and 2. Higher values like 0.8 are  more random.
 	// lower values are more focused and deterministic.
 	Temperature *float32 `json:"temperature,omitempty"`
@@ -389,6 +391,12 @@ func (c *Client) CreateThreadAndRun(
 	return
 }
 
+// ChatCompletionStream
+// Note: Perhaps it is more elegant to abstract Stream using generics.
+type RunCompletionStream struct {
+	*streamReader[ChatCompletionStreamResponse]
+}
+
 // RetrieveRunStep retrieves a run step.
 func (c *Client) RetrieveRunStep(
 	ctx context.Context,
@@ -448,4 +456,109 @@ func (c *Client) ListRunSteps(
 
 	err = c.sendRequest(req, &response)
 	return
+}
+
+type StreamMessageDelta struct {
+	Role    string           `json:"role"`
+	Content []MessageContent `json:"content"`
+	FileIDs []string         `json:"file_ids"`
+}
+
+type AssistantStreamEvent struct {
+	ID     string             `json:"id"`
+	Object string             `json:"object"`
+	Delta  StreamMessageDelta `json:"delta,omitempty"`
+
+	// Run
+	CreatedAt      int64              `json:"created_at,omitempty"`
+	ThreadID       string             `json:"thread_id,omitempty"`
+	AssistantID    string             `json:"assistant_id,omitempty"`
+	Status         RunStatus          `json:"status,omitempty"`
+	RequiredAction *RunRequiredAction `json:"required_action,omitempty"`
+	LastError      *RunLastError      `json:"last_error,omitempty"`
+	ExpiresAt      int64              `json:"expires_at,omitempty"`
+	StartedAt      *int64             `json:"started_at,omitempty"`
+	CancelledAt    *int64             `json:"cancelled_at,omitempty"`
+	FailedAt       *int64             `json:"failed_at,omitempty"`
+	CompletedAt    *int64             `json:"completed_at,omitempty"`
+	Model          string             `json:"model,omitempty"`
+	Instructions   string             `json:"instructions,omitempty"`
+	Tools          []Tool             `json:"tools,omitempty"`
+	FileIDS        []string           `json:"file_ids"` //nolint:revive // backwards-compatibility
+	Metadata       map[string]any     `json:"metadata,omitempty"`
+	Usage          Usage              `json:"usage,omitempty"`
+
+	// ThreadMessage.Completed
+	Role    string           `json:"role,omitempty"`
+	Content []MessageContent `json:"content,omitempty"`
+	// IncompleteDetails
+	// IncompleteAt
+
+	// Run steps
+	RunID       string      `json:"run_id"`
+	Type        RunStepType `json:"type"`
+	StepDetails StepDetails `json:"step_details"`
+	ExpiredAt   *int64      `json:"expired_at,omitempty"`
+}
+
+type AssistantStream struct {
+	*streamReader[AssistantStreamEvent]
+}
+
+func (c *Client) CreateThreadAndRunStream(
+	ctx context.Context,
+	request CreateThreadAndRunRequest) (stream *StreamerV2, err error) {
+	type createThreadAndStreamRequest struct {
+		CreateThreadAndRunRequest
+		Stream bool `json:"stream"`
+	}
+
+	urlSuffix := "/threads/runs"
+	sr := createThreadAndStreamRequest{
+		CreateThreadAndRunRequest: request,
+		Stream:                    true,
+	}
+
+	req, err := c.newRequest(
+		ctx,
+		http.MethodPost,
+		c.fullURL(urlSuffix),
+		withBody(sr),
+		withBetaAssistantVersion(c.config.AssistantVersion),
+	)
+	if err != nil {
+		return
+	}
+
+	return sendRequestStreamV2(c, req)
+}
+
+type RunRequestStreaming struct {
+	RunRequest
+	Stream bool `json:"stream"`
+}
+
+func (c *Client) CreateRunStream(
+	ctx context.Context,
+	threadID string,
+	request RunRequest) (stream *StreamerV2, err error) {
+	urlSuffix := fmt.Sprintf("/threads/%s/runs", threadID)
+
+	r := RunRequestStreaming{
+		RunRequest: request,
+		Stream:     true,
+	}
+
+	req, err := c.newRequest(
+		ctx,
+		http.MethodPost,
+		c.fullURL(urlSuffix),
+		withBody(r),
+		withBetaAssistantVersion(c.config.AssistantVersion),
+	)
+	if err != nil {
+		return
+	}
+
+	return sendRequestStreamV2(c, req)
 }
