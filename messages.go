@@ -43,8 +43,20 @@ type MessageContent struct {
 	ImageFile *ImageFile   `json:"image_file,omitempty"`
 }
 type MessageText struct {
-	Value       string `json:"value"`
-	Annotations []any  `json:"annotations"`
+	Value       string        `json:"value"`
+	Annotations []*Annotation `json:"annotations"`
+}
+
+type Annotation struct {
+	StartIndex   int           `json:"start_index"`
+	EndIndex     int           `json:"end_index"`
+	FileCitation *FileCitation `json:"file_citation,omitempty"`
+	Text         string        `json:"text,omitempty"`
+	Type         string        `json:"type,omitempty"`
+}
+
+type FileCitation struct {
+	FileID string `json:"file_id"`
 }
 
 type ImageFile struct {
