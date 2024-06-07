@@ -40,6 +40,10 @@ type ThreadMessage struct {
 	Metadata map[string]any    `json:"metadata,omitempty"`
 }
 
+type Attachment struct {
+	FileID string `json:"file_id"`
+}
+
 type ThreadDeleteResponse struct {
 	ID      string `json:"id"`
 	Object  string `json:"object"`

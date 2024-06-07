@@ -83,12 +83,13 @@ const (
 )
 
 type RunRequest struct {
-	AssistantID            string         `json:"assistant_id"`
-	Model                  string         `json:"model,omitempty"`
-	Instructions           string         `json:"instructions,omitempty"`
-	AdditionalInstructions string         `json:"additional_instructions,omitempty"`
-	Tools                  []Tool         `json:"tools,omitempty"`
-	Metadata               map[string]any `json:"metadata,omitempty"`
+	AssistantID            string               `json:"assistant_id"`
+	Model                  string               `json:"model,omitempty"`
+	Instructions           string               `json:"instructions,omitempty"`
+	AdditionalInstructions string               `json:"additional_instructions,omitempty"`
+	AdditionalMessages     []*AdditionalMessage `json:"additional_messages,omitempty"`
+	Tools                  []Tool               `json:"tools,omitempty"`
+	Metadata               map[string]any       `json:"metadata,omitempty"`
 
 	ToolResources map[string]any `json:"tool_resources,omitempty"`
 
@@ -112,6 +113,14 @@ type RunRequest struct {
 	ToolChoice any `json:"tool_choice,omitempty"`
 	// This can be either a string or a ResponseFormat object.
 	ResponseFormat any `json:"response_format,omitempty"`
+}
+
+type AdditionalMessage struct {
+	Role        ThreadMessageRole `json:"role"`
+	Content     string            `json:"content"`
+	Attachments []Attachment      `json:"attachments,omitempty"`
+	FileIDs     []string          `json:"file_ids,omitempty"`
+	Metadata    map[string]any    `json:"metadata,omitempty"`
 }
 
 // ThreadTruncationStrategy defines the truncation strategy to use for the thread.
