@@ -74,7 +74,7 @@ type VectorFile struct {
 	httpHeader
 }
 
-type VectorFileFileRequest struct {
+type VectorFileRequest struct {
 	VectorStoreID string `json:"vector_store_id"`
 	FileID        string `json:"file_id"`
 }
@@ -188,8 +188,8 @@ func (c *Client) ListVectors(
 func (c *Client) CreateVectorFile(
 	ctx context.Context,
 	vectorID string,
-	request VectorFileFileRequest,
-) (response AssistantFile, err error) {
+	request VectorFileRequest,
+) (response VectorFile, err error) {
 	urlSuffix := fmt.Sprintf("%s/%s%s", vectorSuffix, vectorID, vectorFilesSuffix)
 	req, err := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix),
 		withBody(request),
