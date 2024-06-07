@@ -269,6 +269,11 @@ func (s *StreamerV2) Text() (string, bool) {
 	return s.MessageDeltaText()
 }
 
+func (s *StreamerV2) Done() bool {
+	_, ok := s.next.(*StreamDone)
+	return ok
+}
+
 // MessageDeltaText returns text delta if the current event is a "thread.message.delta".
 func (s *StreamerV2) MessageDeltaText() (string, bool) {
 	event, ok := s.next.(*StreamThreadMessageDelta)

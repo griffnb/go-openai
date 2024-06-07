@@ -526,8 +526,9 @@ func (c *Client) CreateThreadAndRunStream(
 		withBody(sr),
 		withBetaAssistantVersion(c.config.AssistantVersion),
 	)
+
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return sendRequestStreamV2(c, req)
