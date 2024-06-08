@@ -169,8 +169,10 @@ func sendRequestStreamV2(client *Client, req *http.Request) (stream *StreamerV2,
 
 	// TODO: how to handle error?
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+
 		resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected status code: %d , body:%s", resp.StatusCode, string(body))
 	}
 
 	return NewStreamerV2(resp.Body), nil
@@ -250,8 +252,13 @@ func (c *Client) fullURL(suffix string, args ...any) string {
 		baseURL = strings.TrimRight(baseURL, "/")
 		// if suffix is /models change to {endpoint}/openai/models?api-version=2022-12-01
 		// https://learn.microsoft.com/en-us/rest/api/cognitiveservices/azureopenaistable/models/list?tabs=HTTP
-		if containsSubstr([]string{"/models", "/assistants", "/threads", "/files"}, suffix) {
-			return fmt.Sprintf("%s/%s%s?api-version=%s", baseURL, azureAPIPrefix, suffix, c.config.APIVersion)
+		queryToken := "?"
+		if strings.Contains(suffix, "?") {
+			queryToken = "&"
+		}
+
+		if containsSubstr([]string{"/vector_stores", "/models", "/assistants", "/threads", "/files"}, suffix) {
+			return fmt.Sprintf("%s/%s%s%sapi-version=%s", baseURL, azureAPIPrefix, suffix, queryToken, c.config.APIVersion)
 		}
 		azureDeploymentName := "UNKNOWN"
 		if len(args) > 0 {
@@ -260,9 +267,9 @@ func (c *Client) fullURL(suffix string, args ...any) string {
 				azureDeploymentName = c.config.GetAzureDeploymentByModel(model)
 			}
 		}
-		return fmt.Sprintf("%s/%s/%s/%s%s?api-version=%s",
+		return fmt.Sprintf("%s/%s/%s/%s%s%sapi-version=%s",
 			baseURL, azureAPIPrefix, azureDeploymentsPrefix,
-			azureDeploymentName, suffix, c.config.APIVersion,
+			azureDeploymentName, suffix, queryToken, c.config.APIVersion,
 		)
 	}
 

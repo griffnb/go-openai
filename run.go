@@ -572,3 +572,35 @@ func (c *Client) CreateRunStream(
 
 	return sendRequestStreamV2(c, req)
 }
+
+type SubmitToolOutputsRequestStreaming struct {
+	SubmitToolOutputsRequest
+	Stream bool `json:"stream"`
+}
+
+// SubmitToolOutputs submits tool outputs.
+func (c *Client) SubmitToolOutputsStream(
+	ctx context.Context,
+	threadID string,
+	runID string,
+	request SubmitToolOutputsRequest) (stream *StreamerV2, err error) {
+	urlSuffix := fmt.Sprintf("/threads/%s/runs/%s/submit_tool_outputs", threadID, runID)
+
+	r := SubmitToolOutputsRequestStreaming{
+		SubmitToolOutputsRequest: request,
+		Stream:                   true,
+	}
+
+	req, err := c.newRequest(
+		ctx,
+		http.MethodPost,
+		c.fullURL(urlSuffix),
+		withBody(r),
+		withBetaAssistantVersion(c.config.AssistantVersion),
+	)
+	if err != nil {
+		return
+	}
+
+	return sendRequestStreamV2(c, req)
+}

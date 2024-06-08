@@ -2,7 +2,6 @@ package openai
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -40,10 +39,12 @@ type VectorRequest struct {
 // If Tools is nil, the field is omitted from the JSON.
 // If Tools is an empty slice, it's included in the JSON as an empty array ([]).
 // If Tools is populated, it's included in the JSON with the elements.
+/*
 func (a VectorRequest) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(a)
 }
+*/
 
 // AssistantsList is a list of assistants.
 type VectorList struct {
@@ -75,8 +76,7 @@ type VectorFile struct {
 }
 
 type VectorFileRequest struct {
-	VectorStoreID string `json:"vector_store_id"`
-	FileID        string `json:"file_id"`
+	FileID string `json:"file_id"`
 }
 
 type VectorFilesList struct {
