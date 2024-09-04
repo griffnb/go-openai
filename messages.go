@@ -79,6 +79,14 @@ type MessageFile struct {
 	httpHeader
 }
 
+type MessageDeletionStatus struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Deleted bool   `json:"deleted"`
+
+	httpHeader
+}
+
 type MessageFilesList struct {
 	MessageFiles []MessageFile `json:"data"`
 
@@ -95,6 +103,22 @@ func (c *Client) CreateMessage(ctx context.Context, threadID string, request Mes
 	}
 
 	err = c.sendRequest(req, &msg)
+	return
+}
+
+// DeleteMessage deletes a message..
+func (c *Client) DeleteMessage(
+	ctx context.Context,
+	threadID, messageID string,
+) (status MessageDeletionStatus, err error) {
+	urlSuffix := fmt.Sprintf("/threads/%s/%s/%s", threadID, messagesSuffix, messageID)
+	req, err := c.newRequest(ctx, http.MethodDelete, c.fullURL(urlSuffix),
+		withBetaAssistantVersion(c.config.AssistantVersion))
+	if err != nil {
+		return
+	}
+
+	err = c.sendRequest(req, &status)
 	return
 }
 

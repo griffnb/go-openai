@@ -46,3 +46,10 @@ func ErrorIsNotf(t *testing.T, err, target error, format string, msg ...string) 
 		t.Fatalf(format, msg)
 	}
 }
+
+func NoErrorF(t *testing.T, err error, message ...string) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err, message)
+	}
+}

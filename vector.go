@@ -8,21 +8,12 @@ import (
 )
 
 const (
-	vectorSuffix      = "/vector_stores"
-	vectorFilesSuffix = "/files"
+	vectorStoresSuffix            = "/vector_stores"
+	vectorStoresFilesSuffix       = "/files"
+	vectorStoresFileBatchesSuffix = "/file_batches"
 )
 
-type Vector struct {
-	ID         string      `json:"id"`
-	Object     string      `json:"object"`
-	CreatedAt  int64       `json:"created_at"`
-	Name       *string     `json:"name,omitempty"`
-	Bytes      int64       `json:"bytes"`
-	FileCounts *FileCounts `json:"file_counts,omitempty"`
-	httpHeader
-}
-
-type FileCounts struct {
+type VectorStoreFileCount struct {
 	InProgress int `json:"in_progress"`
 	Completed  int `json:"completed"`
 	Failed     int `json:"failed"`
@@ -30,32 +21,44 @@ type FileCounts struct {
 	Total      int `json:"total"`
 }
 
-type VectorRequest struct {
-	Name    *string   `json:"name,omitempty"`
-	FileIDs *[]string `json:"file_ids,omitempty"`
-}
+type VectorStore struct {
+	ID           string               `json:"id"`
+	Object       string               `json:"object"`
+	CreatedAt    int64                `json:"created_at"`
+	Name         string               `json:"name"`
+	UsageBytes   int                  `json:"usage_bytes"`
+	FileCounts   VectorStoreFileCount `json:"file_counts"`
+	Status       string               `json:"status"`
+	ExpiresAfter *VectorStoreExpires  `json:"expires_after"`
+	ExpiresAt    *int                 `json:"expires_at"`
+	Metadata     map[string]any       `json:"metadata"`
 
-// MarshalJSON provides a custom marshaller for the assistant request to handle the API use cases
-// If Tools is nil, the field is omitted from the JSON.
-// If Tools is an empty slice, it's included in the JSON as an empty array ([]).
-// If Tools is populated, it's included in the JSON with the elements.
-/*
-func (a VectorRequest) MarshalJSON() ([]byte, error) {
-
-	return json.Marshal(a)
-}
-*/
-
-// AssistantsList is a list of assistants.
-type VectorList struct {
-	Vectors []Vector `json:"data"`
-	LastID  *string  `json:"last_id"`
-	FirstID *string  `json:"first_id"`
-	HasMore bool     `json:"has_more"`
 	httpHeader
 }
 
-type VectorDeleteResponse struct {
+type VectorStoreExpires struct {
+	Anchor string `json:"anchor"`
+	Days   int    `json:"days"`
+}
+
+// VectorStoreRequest provides the vector store request parameters.
+type VectorStoreRequest struct {
+	Name         string              `json:"name,omitempty"`
+	FileIDs      []string            `json:"file_ids,omitempty"`
+	ExpiresAfter *VectorStoreExpires `json:"expires_after,omitempty"`
+	Metadata     map[string]any      `json:"metadata,omitempty"`
+}
+
+// VectorStoresList is a list of vector store.
+type VectorStoresList struct {
+	VectorStores []VectorStore `json:"data"`
+	LastID       *string       `json:"last_id"`
+	FirstID      *string       `json:"first_id"`
+	HasMore      bool          `json:"has_more"`
+	httpHeader
+}
+
+type VectorStoreDeleteResponse struct {
 	ID      string `json:"id"`
 	Object  string `json:"object"`
 	Deleted bool   `json:"deleted"`
@@ -63,109 +66,114 @@ type VectorDeleteResponse struct {
 	httpHeader
 }
 
-type VectorFile struct {
+type VectorStoreFile struct {
 	ID            string `json:"id"`
 	Object        string `json:"object"`
 	CreatedAt     int64  `json:"created_at"`
-	UsageBytes    int64  `json:"usage_bytes"`
 	VectorStoreID string `json:"vector_store_id"`
+	UsageBytes    int    `json:"usage_bytes"`
 	Status        string `json:"status"`
-	LastError     string `json:"last_error"`
 
 	httpHeader
 }
 
-type VectorFileRequest struct {
+type VectorStoreFileRequest struct {
 	FileID string `json:"file_id"`
 }
 
-type VectorFilesList struct {
-	VectorFiles []VectorFile `json:"data"`
+type VectorStoreFilesList struct {
+	VectorStoreFiles []VectorStoreFile `json:"data"`
 
 	httpHeader
 }
 
-// CreateVector creates a new vector.
-func (c *Client) CreateVector(ctx context.Context, request VectorRequest) (response Vector, err error) {
-	req, err := c.newRequest(ctx, http.MethodPost, c.fullURL(vectorSuffix), withBody(request),
-		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
+type VectorStoreFileBatch struct {
+	ID            string               `json:"id"`
+	Object        string               `json:"object"`
+	CreatedAt     int64                `json:"created_at"`
+	VectorStoreID string               `json:"vector_store_id"`
+	Status        string               `json:"status"`
+	FileCounts    VectorStoreFileCount `json:"file_counts"`
+
+	httpHeader
+}
+
+type VectorStoreFileBatchRequest struct {
+	FileIDs []string `json:"file_ids"`
+}
+
+// CreateVectorStore creates a new vector store.
+func (c *Client) CreateVectorStore(ctx context.Context, request VectorStoreRequest) (response VectorStore, err error) {
+	req, _ := c.newRequest(
+		ctx,
+		http.MethodPost,
+		c.fullURL(vectorStoresSuffix),
+		withBody(request),
+		withBetaAssistantVersion(c.config.AssistantVersion),
+	)
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// RetrieveAssistant retrieves an assistant.
-func (c *Client) RetrieveVector(
+// RetrieveVectorStore retrieves an vector store.
+func (c *Client) RetrieveVectorStore(
 	ctx context.Context,
-	vectorID string,
-) (response Vector, err error) {
-	urlSuffix := fmt.Sprintf("%s/%s", vectorSuffix, vectorID)
-	req, err := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
+	vectorStoreID string,
+) (response VectorStore, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s", vectorStoresSuffix, vectorStoreID)
+	req, _ := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// ModifyVector modifies an assistant.
-func (c *Client) ModifyVector(
+// ModifyVectorStore modifies a vector store.
+func (c *Client) ModifyVectorStore(
 	ctx context.Context,
-	vectorID string,
-	request VectorRequest,
-) (response Vector, err error) {
-	urlSuffix := fmt.Sprintf("%s/%s", vectorSuffix, vectorID)
-	req, err := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix), withBody(request),
+	vectorStoreID string,
+	request VectorStoreRequest,
+) (response VectorStore, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s", vectorStoresSuffix, vectorStoreID)
+	req, _ := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix), withBody(request),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// DeleteVector deletes an assistant.
-func (c *Client) DeleteVector(
+// DeleteVectorStore deletes an vector store.
+func (c *Client) DeleteVectorStore(
 	ctx context.Context,
-	vectorID string,
-) (response VectorDeleteResponse, err error) {
-	urlSuffix := fmt.Sprintf("%s/%s", vectorSuffix, vectorID)
-	req, err := c.newRequest(ctx, http.MethodDelete, c.fullURL(urlSuffix),
+	vectorStoreID string,
+) (response VectorStoreDeleteResponse, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s", vectorStoresSuffix, vectorStoreID)
+	req, _ := c.newRequest(ctx, http.MethodDelete, c.fullURL(urlSuffix),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// ListVectors Lists the currently available assistants.
-func (c *Client) ListVectors(
+// ListVectorStores Lists the currently available vector store.
+func (c *Client) ListVectorStores(
 	ctx context.Context,
-	limit *int,
-	order *string,
-	after *string,
-	before *string,
-) (response VectorList, err error) {
+	pagination Pagination,
+) (response VectorStoresList, err error) {
 	urlValues := url.Values{}
-	if limit != nil {
-		urlValues.Add("limit", fmt.Sprintf("%d", *limit))
+
+	if pagination.After != nil {
+		urlValues.Add("after", *pagination.After)
 	}
-	if order != nil {
-		urlValues.Add("order", *order)
+	if pagination.Order != nil {
+		urlValues.Add("order", *pagination.Order)
 	}
-	if after != nil {
-		urlValues.Add("after", *after)
+	if pagination.Limit != nil {
+		urlValues.Add("limit", fmt.Sprintf("%d", *pagination.Limit))
 	}
-	if before != nil {
-		urlValues.Add("before", *before)
+	if pagination.Before != nil {
+		urlValues.Add("before", *pagination.Before)
 	}
 
 	encodedValues := ""
@@ -173,90 +181,75 @@ func (c *Client) ListVectors(
 		encodedValues = "?" + urlValues.Encode()
 	}
 
-	urlSuffix := fmt.Sprintf("%s%s", vectorSuffix, encodedValues)
-	req, err := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
+	urlSuffix := fmt.Sprintf("%s%s", vectorStoresSuffix, encodedValues)
+	req, _ := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// CreateVectorFile creates a new assistant file.
-func (c *Client) CreateVectorFile(
+// CreateVectorStoreFile creates a new vector store file.
+func (c *Client) CreateVectorStoreFile(
 	ctx context.Context,
-	vectorID string,
-	request VectorFileRequest,
-) (response VectorFile, err error) {
-	urlSuffix := fmt.Sprintf("%s/%s%s", vectorSuffix, vectorID, vectorFilesSuffix)
-	req, err := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix),
+	vectorStoreID string,
+	request VectorStoreFileRequest,
+) (response VectorStoreFile, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s%s", vectorStoresSuffix, vectorStoreID, vectorStoresFilesSuffix)
+	req, _ := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix),
 		withBody(request),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// RetrieveAssistantFile retrieves an assistant file.
-func (c *Client) RetrieveVectorFile(
+// RetrieveVectorStoreFile retrieves a vector store file.
+func (c *Client) RetrieveVectorStoreFile(
 	ctx context.Context,
-	vectorId string,
+	vectorStoreID string,
 	fileID string,
-) (response AssistantFile, err error) {
-	urlSuffix := fmt.Sprintf("%s/%s%s/%s", vectorSuffix, vectorId, vectorFilesSuffix, fileID)
-	req, err := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
+) (response VectorStoreFile, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s%s/%s", vectorStoresSuffix, vectorStoreID, vectorStoresFilesSuffix, fileID)
+	req, _ := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, &response)
 	return
 }
 
-// DeleteAssistantFile deletes an existing file.
-func (c *Client) DeleteVectorFile(
+// DeleteVectorStoreFile deletes an existing file.
+func (c *Client) DeleteVectorStoreFile(
 	ctx context.Context,
-	vectorID string,
+	vectorStoreID string,
 	fileID string,
 ) (err error) {
-	urlSuffix := fmt.Sprintf("%s/%s%s/%s", vectorSuffix, vectorID, vectorFilesSuffix, fileID)
-	req, err := c.newRequest(ctx, http.MethodDelete, c.fullURL(urlSuffix),
+	urlSuffix := fmt.Sprintf("%s/%s%s/%s", vectorStoresSuffix, vectorStoreID, vectorStoresFilesSuffix, fileID)
+	req, _ := c.newRequest(ctx, http.MethodDelete, c.fullURL(urlSuffix),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
-	}
 
 	err = c.sendRequest(req, nil)
 	return
 }
 
-// ListAssistantFiles Lists the currently available files for an assistant.
-func (c *Client) ListVectrFiles(
+// ListVectorStoreFiles Lists the currently available files for a vector store.
+func (c *Client) ListVectorStoreFiles(
 	ctx context.Context,
-	vectorID string,
-	limit *int,
-	order *string,
-	after *string,
-	before *string,
-) (response VectorFilesList, err error) {
+	vectorStoreID string,
+	pagination Pagination,
+) (response VectorStoreFilesList, err error) {
 	urlValues := url.Values{}
-	if limit != nil {
-		urlValues.Add("limit", fmt.Sprintf("%d", *limit))
+	if pagination.After != nil {
+		urlValues.Add("after", *pagination.After)
 	}
-	if order != nil {
-		urlValues.Add("order", *order)
+	if pagination.Limit != nil {
+		urlValues.Add("limit", fmt.Sprintf("%d", *pagination.Limit))
 	}
-	if after != nil {
-		urlValues.Add("after", *after)
+	if pagination.Before != nil {
+		urlValues.Add("before", *pagination.Before)
 	}
-	if before != nil {
-		urlValues.Add("before", *before)
+	if pagination.Order != nil {
+		urlValues.Add("order", *pagination.Order)
 	}
 
 	encodedValues := ""
@@ -264,12 +257,88 @@ func (c *Client) ListVectrFiles(
 		encodedValues = "?" + urlValues.Encode()
 	}
 
-	urlSuffix := fmt.Sprintf("%s/%s%s%s", vectorSuffix, vectorID, vectorFilesSuffix, encodedValues)
-	req, err := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
+	urlSuffix := fmt.Sprintf("%s/%s%s%s", vectorStoresSuffix, vectorStoreID, vectorStoresFilesSuffix, encodedValues)
+	req, _ := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
 		withBetaAssistantVersion(c.config.AssistantVersion))
-	if err != nil {
-		return
+
+	err = c.sendRequest(req, &response)
+	return
+}
+
+// CreateVectorStoreFileBatch creates a new vector store file batch.
+func (c *Client) CreateVectorStoreFileBatch(
+	ctx context.Context,
+	vectorStoreID string,
+	request VectorStoreFileBatchRequest,
+) (response VectorStoreFileBatch, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s%s", vectorStoresSuffix, vectorStoreID, vectorStoresFileBatchesSuffix)
+	req, _ := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix),
+		withBody(request),
+		withBetaAssistantVersion(c.config.AssistantVersion))
+
+	err = c.sendRequest(req, &response)
+	return
+}
+
+// RetrieveVectorStoreFileBatch retrieves a vector store file batch.
+func (c *Client) RetrieveVectorStoreFileBatch(
+	ctx context.Context,
+	vectorStoreID string,
+	batchID string,
+) (response VectorStoreFileBatch, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s%s/%s", vectorStoresSuffix, vectorStoreID, vectorStoresFileBatchesSuffix, batchID)
+	req, _ := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
+		withBetaAssistantVersion(c.config.AssistantVersion))
+
+	err = c.sendRequest(req, &response)
+	return
+}
+
+// CancelVectorStoreFileBatch cancel a new vector store file batch.
+func (c *Client) CancelVectorStoreFileBatch(
+	ctx context.Context,
+	vectorStoreID string,
+	batchID string,
+) (response VectorStoreFileBatch, err error) {
+	urlSuffix := fmt.Sprintf("%s/%s%s/%s%s", vectorStoresSuffix,
+		vectorStoreID, vectorStoresFileBatchesSuffix, batchID, "/cancel")
+	req, _ := c.newRequest(ctx, http.MethodPost, c.fullURL(urlSuffix),
+		withBetaAssistantVersion(c.config.AssistantVersion))
+
+	err = c.sendRequest(req, &response)
+	return
+}
+
+// ListVectorStoreFiles Lists the currently available files for a vector store.
+func (c *Client) ListVectorStoreFilesInBatch(
+	ctx context.Context,
+	vectorStoreID string,
+	batchID string,
+	pagination Pagination,
+) (response VectorStoreFilesList, err error) {
+	urlValues := url.Values{}
+	if pagination.After != nil {
+		urlValues.Add("after", *pagination.After)
 	}
+	if pagination.Limit != nil {
+		urlValues.Add("limit", fmt.Sprintf("%d", *pagination.Limit))
+	}
+	if pagination.Before != nil {
+		urlValues.Add("before", *pagination.Before)
+	}
+	if pagination.Order != nil {
+		urlValues.Add("order", *pagination.Order)
+	}
+
+	encodedValues := ""
+	if len(urlValues) > 0 {
+		encodedValues = "?" + urlValues.Encode()
+	}
+
+	urlSuffix := fmt.Sprintf("%s/%s%s/%s%s%s", vectorStoresSuffix,
+		vectorStoreID, vectorStoresFileBatchesSuffix, batchID, "/files", encodedValues)
+	req, _ := c.newRequest(ctx, http.MethodGet, c.fullURL(urlSuffix),
+		withBetaAssistantVersion(c.config.AssistantVersion))
 
 	err = c.sendRequest(req, &response)
 	return

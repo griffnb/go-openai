@@ -116,11 +116,11 @@ type RunRequest struct {
 }
 
 type AdditionalMessage struct {
-	Role        ThreadMessageRole `json:"role"`
-	Content     string            `json:"content"`
-	Attachments []Attachment      `json:"attachments,omitempty"`
-	FileIDs     []string          `json:"file_ids,omitempty"`
-	Metadata    map[string]any    `json:"metadata,omitempty"`
+	Role        ThreadMessageRole  `json:"role"`
+	Content     string             `json:"content"`
+	Attachments []ThreadAttachment `json:"attachments,omitempty"`
+	FileIDs     []string           `json:"file_ids,omitempty"`
+	Metadata    map[string]any     `json:"metadata,omitempty"`
 }
 
 // ThreadTruncationStrategy defines the truncation strategy to use for the thread.
