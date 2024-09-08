@@ -216,6 +216,9 @@ func (c *Client) CreateCompletion(
 		c.fullURL(urlSuffix, withModel(request.Model)),
 		withBody(request),
 	)
+	if err != nil {
+		return
+	}
 
 	err = c.sendRequest(req, &response)
 	return
